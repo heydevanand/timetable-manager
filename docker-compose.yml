@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  web:
+    build: .
+    restart: always
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=sqlite:///timetable.db
+    ports:
+      - "8000:8000"
+    command: gunicorn --bind 0.0.0.0:8000 wsgi:app
+    volumes:
+      - ./:/app
+      - /tmp/flask_session:/tmp/flask_session

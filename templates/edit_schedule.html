@@ -9,6 +9,7 @@
             </div>
             <div class="card-body">
                 <form action="{{ url_for('edit_schedule') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="teacher_id" value="{{ schedule.teacher_id }}">
                     <input type="hidden" name="day" value="{{ schedule.day }}">
                     <input type="hidden" name="time_slot" value="{{ schedule.time_slot }}">

@@ -4,6 +4,14 @@
       { "src": "app.py", "use": "@vercel/python" }
     ],
     "routes": [
+      { "src": "/static/(.*)", "dest": "/static/$1" },
+      { "src": "/reset-database", "dest": "/app.py" },
+      { "src": "/public-reset", "dest": "/app.py" },
+      { "src": "/debug-db", "dest": "/app.py" },
       { "src": "/(.*)", "dest": "/app.py" }
-    ]
+    ],
+    "env": {
+      "FLASK_ENV": "production",
+      "FLASK_DEBUG": "1"
+    }
   }

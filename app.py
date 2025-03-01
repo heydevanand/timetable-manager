@@ -1,47 +1,61 @@
 # app.py - Main Flask Application
+import os
+import logging
+import sys
+import tempfile
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_wtf.csrf import CSRFProtect, generate_csrf  # Import generate_csrf function
-import os
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask_session import Session
-import tempfile
-import logging
-import sys
 
-# Configure logging to see what's happening
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
-                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Determine the environment
+env = os.environ.get('FLASK_ENV', 'development')
+debug_mode = env == 'development'
 
-# Update configuration
+# Configure logging
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.DEBUG if debug_mode else logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# Create Flask application
 app = Flask(__name__)
-# Use a fixed secret key for development (more secure in production)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///timetable.db'
-app.config['SQLALCHEMY_TRACK_CHANGES'] = False
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Fix warning
 
-# Store SECRET_KEY in a file or environment variable for persistence
-SECRET_KEY_FILE = os.path.join(app.root_path, 'secret_key')
-
-if os.path.exists(SECRET_KEY_FILE):
-    # Read existing secret key
-    with open(SECRET_KEY_FILE, 'rb') as f:
-        app.config['SECRET_KEY'] = f.read()
+# Import configuration
+if debug_mode:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///timetable.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    # Generate/load secret key for development
+    SECRET_KEY_FILE = os.path.join(app.root_path, 'secret_key')
+    if os.path.exists(SECRET_KEY_FILE):
+        with open(SECRET_KEY_FILE, 'rb') as f:
+            app.config['SECRET_KEY'] = f.read()
+    else:
+        app.config['SECRET_KEY'] = os.urandom(24)
+        with open(SECRET_KEY_FILE, 'wb') as f:
+            f.write(app.config['SECRET_KEY'])
 else:
-    # Generate a new secret key
-    app.config['SECRET_KEY'] = os.urandom(24)
-    # Save it for future use
-    with open(SECRET_KEY_FILE, 'wb') as f:
-        f.write(app.config['SECRET_KEY'])
+    # Production settings
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///timetable.db')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+    
+    if not app.config['SECRET_KEY']:
+        app.logger.error("No SECRET_KEY set for production environment!")
+        
+    app.config['WTF_CSRF_SSL_STRICT'] = True
 
 # Configure session to use filesystem
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(tempfile.gettempdir(), 'flask_session')
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_USE_SIGNER'] = True
-app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutes
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
 
 # Create session directory if it doesn't exist
 os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
@@ -54,8 +68,8 @@ db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
 
 # Configure CSRF protection
-app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour
-app.config['WTF_CSRF_SSL_STRICT'] = False  # Needed for development
+app.config['WTF_CSRF_TIME_LIMIT'] = None if debug_mode else 3600
+app.config['WTF_CSRF_ENABLED'] = True
 
 # Set up Flask-Login
 login_manager = LoginManager()
@@ -203,6 +217,7 @@ def create_admin_user():
 
 # Authentication Routes
 @app.route('/login', methods=['GET', 'POST'])
+@csrf.exempt
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
@@ -227,6 +242,7 @@ def login():
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
+@csrf.exempt
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
@@ -627,17 +643,207 @@ def direct_access():
         except Exception as e:
             return f"Error: {str(e)}", 500
 
+# Add a dedicated route to reset database (this should be removed in production)
+@app.route('/reset-database', methods=['GET'])
+@csrf.exempt
+def reset_db_route():
+    # Only allow this in development
+    if not app.debug:
+        return "Not allowed in production", 403
+        
+    try:
+        with app.app_context():
+            # Drop all tables
+            db.drop_all()
+            
+            # Recreate all tables
+            db.create_all()
+            
+            # Create admin user
+            admin = User(
+                username='admin',
+                email='admin@example.com',
+                is_admin=True,
+                full_name='Administrator',
+                department='IT'
+            )
+            
+            # Set password
+            admin.set_password('admin123')
+            
+            # Add to database
+            db.session.add(admin)
+            db.session.commit()
+            
+            flash('Database has been reset. Admin user created with username: admin and password: admin123', 'success')
+            return redirect(url_for('login'))
+    except Exception as e:
+        return f"Error resetting database: {str(e)}", 500
+
+# Ensure CSRF exempt is properly registered for this route
+csrf.exempt(app.route('/reset-database')(reset_db_route))
+
 # Make sure all forms have CSRF tokens by adding this context processor
 @app.context_processor
 def inject_csrf_token():
     return dict(csrf_token=generate_csrf())  # Use the imported function
+
+# Add a public database reset endpoint with all protections disabled
+@app.route('/public-reset', methods=['GET'])
+@csrf.exempt
+def public_reset():
+    try:
+        # Get the database filepath
+        db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+        if not db_path.startswith('/'):
+            # It's a relative path, make it absolute
+            db_path = os.path.join(app.root_path, db_path)
+            
+        print(f"Database path: {db_path}")
+        
+        # Check if we can access the database directory
+        db_dir = os.path.dirname(db_path)
+        if not os.access(db_dir, os.W_OK):
+            return f"Cannot write to database directory: {db_dir}", 500
+            
+        # Try to reconnect to the database
+        try:
+            db.session.execute('SELECT 1')
+        except:
+            db.session.rollback()
+            
+        # Drop and recreate all tables
+        db.drop_all()
+        db.create_all()
+        
+        # Create admin user
+        admin = User(
+            username='admin',
+            email='admin@example.com',
+            is_admin=True,
+            full_name='Administrator',
+            department='IT'
+        )
+        admin.set_password('admin123')
+        
+        # Add to database
+        db.session.add(admin)
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            return f"Database commit failed: {str(e)}", 500
+            
+        return f"""
+        <html>
+        <body>
+            <h1>Database Reset Successful</h1>
+            <p>Admin user created with:</p>
+            <ul>
+                <li>Username: admin</li>
+                <li>Password: admin123</li>
+            </ul>
+            <p><a href="/login">Go to login</a></p>
+        </body>
+        </html>
+        """
+    except Exception as e:
+        print(f"Error in public_reset: {str(e)}")
+        return f"Error: {str(e)}", 500
+
+# Add a database debugging endpoint
+@app.route('/debug-db', methods=['GET'])
+@csrf.exempt
+def debug_db():
+    if not app.debug:
+        return "Not available in production", 403
+        
+    try:
+        # Basic diagnostics
+        result = "<h2>Database Diagnostics</h2>"
+        
+        # Get database file path
+        db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+        if not db_path.startswith('/'):
+            # It's a relative path, make it absolute
+            db_path = os.path.join(app.root_path, db_path)
+        
+        result += f"<p>Database path: {db_path}</p>"
+        
+        # Check if file exists
+        if os.path.exists(db_path):
+            result += f"<p>✅ Database file exists</p>"
+            
+            # Check permissions
+            try:
+                file_stat = os.stat(db_path)
+                result += f"<p>File permissions: {oct(file_stat.st_mode)}</p>"
+                
+                if os.access(db_path, os.R_OK):
+                    result += "<p>✅ File is readable</p>"
+                else:
+                    result += "<p>❌ File is not readable</p>"
+                    
+                if os.access(db_path, os.W_OK):
+                    result += "<p>✅ File is writable</p>"
+                else:
+                    result += "<p>❌ File is not writable</p>"
+            except Exception as e:
+                result += f"<p>❌ Error checking permissions: {str(e)}</p>"
+        else:
+            result += f"<p>❌ Database file does not exist!</p>"
+            
+        # Check connection
+        try:
+            db.session.execute('SELECT 1')
+            result += "<p>✅ Database connection successful</p>"
+            
+            # Count tables
+            try:
+                engine = db.engine
+                inspector = db.inspect(engine)
+                tables = inspector.get_table_names()
+                result += f"<p>Tables in database: {len(tables)}</p>"
+                result += "<ul>"
+                for table in tables:
+                    count = db.session.execute(f"SELECT COUNT(*) FROM {table}").scalar()
+                    result += f"<li>{table}: {count} rows</li>"
+                result += "</ul>"
+            except Exception as e:
+                result += f"<p>❌ Error inspecting tables: {str(e)}</p>"
+                
+        except Exception as e:
+            result += f"<p>❌ Database connection failed: {str(e)}</p>"
+            
+        # Add action buttons
+        result += """
+        <hr>
+        <h3>Actions:</h3>
+        <ul>
+            <li><a href="/public-reset" onclick="return confirm('Are you sure? This will ERASE ALL DATA!')">Reset Database (create new admin)</a></li>
+            <li><a href="/login">Go to Login</a></li>
+        </ul>
+        """
+            
+        return f"""
+        <html>
+        <head><title>Database Diagnostics</title></head>
+        <body>{result}</body>
+        </html>
+        """
+    except Exception as e:
+        return f"Error in diagnostics: {str(e)}", 500
+
+# Make sure to exempt these routes from CSRF protection
+csrf.exempt(app.route('/public-reset')(public_reset))
+csrf.exempt(app.route('/debug-db')(debug_db))
 
 # Run the app
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         init_data()
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=True)
 else:
     # This ensures init_data runs even when imported by a WSGI server
     with app.app_context():

@@ -23,13 +23,12 @@
         .schedule-cell {
             cursor: pointer;
         }
-        body {
-            padding-top: 20px;
-            padding-bottom: 20px;
-        }
     </style>
 </head>
 <body>
+    <!-- Remove any inline styles that might add padding -->
+    <!-- If you have a fixed navbar, ensure it's not adding extra space -->
+    
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">Timetable App</a>
@@ -79,7 +78,8 @@
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <!-- Make sure your content container doesn't have unnecessary padding-top -->
+    <div class="content-wrapper">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
