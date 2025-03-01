@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h4>Free Teachers</h4>
+    </div>
+    <div class="card-body">
+        <form method="get" action="{{ url_for('free_teachers') }}" class="mb-4 row">
+            <div class="col-md-4">
+                <label for="day" class="form-label">Day</label>
+                <select name="day" id="day" class="form-select">
+                    {% for day in days %}
+                    <option value="{{ day }}" {% if day == selected_day %}selected{% endif %}>{{ day }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="time_slot" class="form-label">Time Slot</label>
+                <select name="time_slot" id="time_slot" class="form-select">
+                    {% for slot in time_slots %}
+                    <option value="{{ slot }}" {% if slot == selected_time %}selected{% endif %}>{{ slot }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">Find Free Teachers</button>
+            </div>
+        </form>
+        
+        <h5>Free Teachers on {{ selected_day }} at {{ selected_time }}</h5>
+        
+        {% if free_teachers %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for teacher in free_teachers %}
+                    <tr>
+                        <td>{{ teacher.name }}</td>
+                        <td>
+                            <a href="{{ url_for('edit_schedule') }}?teacher_id={{ teacher.id }}&day={{ selected_day }}&time_slot={{ selected_time }}" 
+                               class="btn btn-sm btn-primary">Update Schedule</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">No free teachers found for this time slot.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
