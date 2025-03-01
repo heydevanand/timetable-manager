@@ -50,3 +50,4 @@ instance/
 # Log files
 logs/
 *.log
+.vercel
