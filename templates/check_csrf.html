@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}CSRF Check - Flask Timetable{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <h4>CSRF Token Information</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    Your CSRF token has been regenerated. This page is only available in debug mode.
+                </div>
+                
+                <h5>Current CSRF Token:</h5>
+                <pre class="bg-light p-3">{{ csrf_token }}</pre>
+                
+                <h5>Session Info:</h5>
+                <pre class="bg-light p-3">
+{% for key, value in session_data.items() %}
+{{ key }}: {{ value }}
+{% endfor %}
+                </pre>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">Return to Home</a>
+                    <a href="{{ url_for('login') }}" class="btn btn-secondary ml-2">Go to Login</a>
+                    <form method="POST" action="{{ url_for('login') }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
