@@ -386,6 +386,7 @@ def free_teachers():
 # Teacher CRUD
 @app.route('/teacher/add', methods=['GET', 'POST'])
 @login_required
+@csrf.exempt  # This exempts the route from CSRF protection (not recommended)
 def add_teacher():
     # Only admin can add teachers
     if not current_user.is_admin:

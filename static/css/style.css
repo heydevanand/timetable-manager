@@ -1,0 +1,47 @@
+/* Base styles */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+}
+
+/* Fix the padding issue at the top of pages */
+.content-wrapper {
+    padding-top: 20px;
+}
+
+/* Table styles */
+.table-responsive {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.status-engaged {
+    background-color: #ffcccb;
+}
+
+.status-free {
+    background-color: #c8e6c9;
+}
+
+.schedule-cell {
+    cursor: pointer;
+}
+
+/* Card and form styling */
+.card {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    font-weight: bold;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+    .table-responsive {
+        max-height: 60vh;
+    }
+}
