@@ -1,101 +1,149 @@
 {% extends 'base.html' %}
 
+{% block title %}Timetable - Timetable Manager{% endblock %}
+
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <h4>Timetable</h4>
-    </div>
-    <div class="card-body">
-        <ul class="nav nav-tabs" id="dayTabs" role="tablist">
-            {% for day in days %}
-            <li class="nav-item" role="presentation">
-                <button class="nav-link {% if loop.first %}active{% endif %}" 
-                        id="{{ day }}-tab" 
-                        data-bs-toggle="tab" 
-                        data-bs-target="#{{ day }}" 
-                        type="button" 
-                        role="tab">{{ day }}</button>
-            </li>
-            {% endfor %}
-        </ul>
-        <div class="tab-content" id="dayTabsContent">
-            {% for day in days %}
-            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
-                 id="{{ day }}" 
-                 role="tabpanel">
-                
-                <div class="table-responsive mt-3">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Time Slot</th>
-                                {% for teacher in teachers %}
-                                <th>{{ teacher.name }}</th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for time_slot in time_slots %}
-                            <tr>
-                                <td>{{ time_slot }}</td>
-                                {% for teacher in teachers %}
-                                {% set schedule = teacher.schedules|selectattr('day', 'equalto', day)|selectattr('time_slot', 'equalto', time_slot)|first %}
-                                <td class="schedule-cell {% if schedule and schedule.status == 'Engaged' %}status-engaged{% else %}status-free{% endif %}"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#scheduleModal"
-                                    data-teacher-id="{{ teacher.id }}"
-                                    data-teacher-name="{{ teacher.name }}"
-                                    data-day="{{ day }}"
-                                    data-time-slot="{{ time_slot }}"
-                                    data-status="{{ schedule.status if schedule else 'Free' }}"
-                                    data-room-number="{{ schedule.room_number if schedule and schedule.room_number else '' }}">
-                                    {% if schedule and schedule.status == 'Engaged' %}
-                                        Engaged{% if schedule.room_number %} {{ schedule.room_number }}{% endif %}
-                                    {% else %}
-                                        Free
-                                    {% endif %}
-                                </td>
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            {% endfor %}
+<div class="fade-in">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-table me-2"></i>Weekly Timetable</h3>
+            <p class="text-muted mb-0">{{ teachers|length }} teachers &middot; {{ days|length }} days &middot; {{ time_slots|length }} time slots</p>
         </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0 no-print">
+            <a href="{{ url_for('export_timetable') }}" class="btn btn-outline-primary">
+                <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
+            </a>
+            <button class="btn btn-outline-secondary" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i>Print
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <ul class="nav nav-tabs px-3 pt-3" id="dayTabs" role="tablist">
+                {% for day in days %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if loop.first %}active{% endif %}"
+                            id="{{ day }}-tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#{{ day }}"
+                            type="button"
+                            role="tab">
+                        <i class="bi bi-calendar-day me-1"></i>{{ day }}
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <div class="tab-content p-3" id="dayTabsContent">
+                {% for day in days %}
+                <div class="tab-pane fade {% if loop.first %}show active{% endif %}"
+                     id="{{ day }}"
+                     role="tabpanel">
+
+                    <div class="table-responsive mt-2">
+                        <table class="table table-bordered timetable-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="min-width: 110px;">
+                                        <i class="bi bi-clock me-1"></i>Time
+                                    </th>
+                                    {% for teacher in teachers %}
+                                    <th>
+                                        <a href="{{ url_for('teacher_timetable', id=teacher.id) }}" class="text-white text-decoration-none">
+                                            {{ teacher.name }}
+                                        </a>
+                                    </th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for time_slot in time_slots %}
+                                <tr>
+                                    <td class="fw-semibold text-nowrap small">{{ time_slot }}</td>
+                                    {% for teacher in teachers %}
+                                    {% set schedule = teacher.schedules|selectattr('day', 'equalto', day)|selectattr('time_slot', 'equalto', time_slot)|first %}
+                                    <td class="schedule-cell {% if schedule and schedule.status == 'Engaged' %}status-engaged{% else %}status-free{% endif %}"
+                                        {% if current_user.is_admin %}
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#scheduleModal"
+                                        data-teacher-id="{{ teacher.id }}"
+                                        data-teacher-name="{{ teacher.name }}"
+                                        data-day="{{ day }}"
+                                        data-time-slot="{{ time_slot }}"
+                                        data-status="{{ schedule.status if schedule else 'Free' }}"
+                                        data-room-number="{{ schedule.room_number if schedule and schedule.room_number else '' }}"
+                                        data-subject="{{ schedule.subject if schedule and schedule.subject else '' }}"
+                                        {% endif %}>
+                                        {% if schedule and schedule.status == 'Engaged' %}
+                                            {% if schedule.subject %}
+                                            <div class="subject-name">{{ schedule.subject }}</div>
+                                            {% else %}
+                                            <div class="subject-name">Engaged</div>
+                                            {% endif %}
+                                            {% if schedule.room_number %}
+                                            <div class="room-badge"><i class="bi bi-geo-alt"></i> {{ schedule.room_number }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-success"><i class="bi bi-check-circle"></i> Free</span>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="d-flex gap-4 mt-3 small text-muted no-print">
+        <span><span class="d-inline-block rounded" style="width: 14px; height: 14px; background: #e6f9f1; border-left: 3px solid #06d6a0; vertical-align: middle;"></span> Free</span>
+        <span><span class="d-inline-block rounded" style="width: 14px; height: 14px; background: #fde8ec; border-left: 3px solid #ef476f; vertical-align: middle;"></span> Engaged</span>
+        {% if current_user.is_admin %}
+        <span class="text-muted"><i class="bi bi-info-circle me-1"></i>Click a cell to edit</span>
+        {% endif %}
     </div>
 </div>
 
-<!-- Schedule Modal -->
+{% if current_user.is_admin %}
+<!-- Schedule Edit Modal -->
 <div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Edit Schedule</h5>
+                <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Schedule</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="{{ url_for('edit_schedule') }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <div class="modal-body">
                     <input type="hidden" id="teacher_id" name="teacher_id">
                     <input type="hidden" id="day" name="day">
                     <input type="hidden" id="time_slot" name="time_slot">
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Teacher</label>
-                        <p id="teacher_name" class="form-control-static"></p>
+
+                    <div class="row mb-3">
+                        <div class="col-4">
+                            <label class="form-label text-muted small">Teacher</label>
+                            <p id="teacher_name" class="fw-semibold mb-0"></p>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label text-muted small">Day</label>
+                            <p id="day_display" class="fw-semibold mb-0"></p>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label text-muted small">Time</label>
+                            <p id="time_slot_display" class="fw-semibold mb-0"></p>
+                        </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Day</label>
-                        <p id="day_display" class="form-control-static"></p>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Time Slot</label>
-                        <p id="time_slot_display" class="form-control-static"></p>
-                    </div>
-                    
+
+                    <hr>
+
                     <div class="mb-3">
                         <label for="status" class="form-label">Status</label>
                         <select class="form-select" id="status" name="status">
@@ -103,45 +151,105 @@
                             <option value="Engaged">Engaged</option>
                         </select>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="room_number" class="form-label">Room Number</label>
-                        <input type="text" class="form-control" id="room_number" name="room_number">
+
+                    <div id="engagedFields">
+                        <div class="mb-3">
+                            <label for="subject" class="form-label">Subject / Course</label>
+                            <input type="text" class="form-control" id="subject" name="subject" placeholder="e.g., Data Structures">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="room_number" class="form-label">Room Number</label>
+                            <input type="text" class="form-control" id="room_number" name="room_number" placeholder="e.g., 201">
+                            <div id="conflictWarning" class="conflict-warning mt-1" style="display:none;">
+                                <i class="bi bi-exclamation-triangle me-1"></i><span id="conflictText"></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save Changes</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const scheduleModal = document.getElementById('scheduleModal');
-        scheduleModal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            
-            const teacherId = button.getAttribute('data-teacher-id');
-            const teacherName = button.getAttribute('data-teacher-name');
-            const day = button.getAttribute('data-day');
-            const timeSlot = button.getAttribute('data-time-slot');
-            const status = button.getAttribute('data-status');
-            const roomNumber = button.getAttribute('data-room-number');
-            
-            scheduleModal.querySelector('#teacher_id').value = teacherId;
-            scheduleModal.querySelector('#teacher_name').textContent = teacherName;
-            scheduleModal.querySelector('#day').value = day;
-            scheduleModal.querySelector('#day_display').textContent = day;
-            scheduleModal.querySelector('#time_slot').value = timeSlot;
-            scheduleModal.querySelector('#time_slot_display').textContent = timeSlot;
-            scheduleModal.querySelector('#status').value = status;
-            scheduleModal.querySelector('#room_number').value = roomNumber;
-        });
+document.addEventListener('DOMContentLoaded', function() {
+    const scheduleModal = document.getElementById('scheduleModal');
+    if (!scheduleModal) return;
+
+    const statusSelect = document.getElementById('status');
+    const engagedFields = document.getElementById('engagedFields');
+    const roomInput = document.getElementById('room_number');
+    const conflictWarning = document.getElementById('conflictWarning');
+    const conflictText = document.getElementById('conflictText');
+
+    // Toggle engaged fields based on status
+    function toggleEngagedFields() {
+        engagedFields.style.display = statusSelect.value === 'Engaged' ? 'block' : 'none';
+    }
+    statusSelect.addEventListener('change', toggleEngagedFields);
+
+    // Populate modal
+    scheduleModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const teacherId = button.getAttribute('data-teacher-id');
+        const teacherName = button.getAttribute('data-teacher-name');
+        const day = button.getAttribute('data-day');
+        const timeSlot = button.getAttribute('data-time-slot');
+        const status = button.getAttribute('data-status');
+        const roomNumber = button.getAttribute('data-room-number');
+        const subject = button.getAttribute('data-subject');
+
+        scheduleModal.querySelector('#teacher_id').value = teacherId;
+        scheduleModal.querySelector('#teacher_name').textContent = teacherName;
+        scheduleModal.querySelector('#day').value = day;
+        scheduleModal.querySelector('#day_display').textContent = day;
+        scheduleModal.querySelector('#time_slot').value = timeSlot;
+        scheduleModal.querySelector('#time_slot_display').textContent = timeSlot;
+        scheduleModal.querySelector('#status').value = status;
+        scheduleModal.querySelector('#room_number').value = roomNumber;
+        scheduleModal.querySelector('#subject').value = subject;
+
+        toggleEngagedFields();
+        conflictWarning.style.display = 'none';
     });
+
+    // Room conflict check
+    if (roomInput) {
+        let debounceTimer;
+        roomInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            const room = this.value.trim();
+            const day = document.getElementById('day').value;
+            const timeSlot = document.getElementById('time_slot').value;
+
+            if (!room) {
+                conflictWarning.style.display = 'none';
+                return;
+            }
+
+            debounceTimer = setTimeout(function() {
+                fetch('/api/room_conflict/' + encodeURIComponent(room) + '/' + encodeURIComponent(day) + '/' + encodeURIComponent(timeSlot))
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.has_conflict && data.booked_by.length > 0) {
+                            const names = data.booked_by.map(function(b) { return b.teacher; }).join(', ');
+                            conflictText.textContent = 'Room ' + room + ' is already booked by ' + names;
+                            conflictWarning.style.display = 'block';
+                        } else {
+                            conflictWarning.style.display = 'none';
+                        }
+                    });
+            }, 300);
+        });
+    }
+});
 </script>
 {% endblock %}

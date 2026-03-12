@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ teacher.name }} - Timetable{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="no-print">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Teachers</a></li>
+            <li class="breadcrumb-item active">{{ teacher.name }}</li>
+        </ol>
+    </nav>
+
+    <!-- Teacher Info Header -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="d-flex align-items-center">
+                        <div class="teacher-avatar me-3" style="background: linear-gradient(135deg, #4361ee, #7209b7); width: 64px; height: 64px; font-size: 1.5rem; border-radius: 16px;">
+                            {{ teacher.name[0]|upper }}
+                        </div>
+                        <div>
+                            <h3 class="fw-bold mb-1">{{ teacher.name }}</h3>
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                {% if teacher.department %}
+                                <span class="badge-dept"><i class="bi bi-building me-1"></i>{{ teacher.department }}</span>
+                                {% endif %}
+                                {% if teacher.email %}
+                                <span class="small text-muted"><i class="bi bi-envelope me-1"></i>{{ teacher.email }}</span>
+                                {% endif %}
+                                {% if teacher.phone %}
+                                <span class="small text-muted"><i class="bi bi-phone me-1"></i>{{ teacher.phone }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-md-end mt-3 mt-md-0 no-print">
+                    <a href="{{ url_for('export_teacher_timetable', id=teacher.id) }}" class="btn btn-outline-primary btn-sm me-1">
+                        <i class="bi bi-file-earmark-excel me-1"></i>Export
+                    </a>
+                    <button class="btn btn-outline-secondary btn-sm me-1" onclick="window.print()">
+                        <i class="bi bi-printer me-1"></i>Print
+                    </button>
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('edit_teacher', id=teacher.id) }}" class="btn btn-outline-warning btn-sm">
+                        <i class="bi bi-pencil me-1"></i>Edit
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="stat-card bg-info-gradient">
+                <i class="bi bi-graph-up stat-icon"></i>
+                <div class="stat-value">{{ utilization }}%</div>
+                <div class="stat-label">Utilization</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card bg-danger-gradient">
+                <i class="bi bi-calendar-check stat-icon"></i>
+                <div class="stat-value">{{ engaged }}</div>
+                <div class="stat-label">Engaged Slots</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card bg-success-gradient">
+                <i class="bi bi-check-circle stat-icon"></i>
+                <div class="stat-value">{{ free }}</div>
+                <div class="stat-label">Free Slots</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card bg-primary-gradient">
+                <i class="bi bi-book stat-icon"></i>
+                <div class="stat-value">{{ subjects|length }}</div>
+                <div class="stat-label">Subject{{ 's' if subjects|length != 1 else '' }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="row g-3 mb-4">
+        {% if subjects %}
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-book me-2"></i>Subjects Taught</div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for subj in subjects %}
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-2">{{ subj }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if rooms_used %}
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-door-open me-2"></i>Rooms Used</div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for room in rooms_used %}
+                        <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle px-3 py-2">
+                            <i class="bi bi-geo-alt me-1"></i>{{ room }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Weekly Timetable Grid -->
+    <div class="card">
+        <div class="card-header gradient-header">
+            <i class="bi bi-calendar-week me-2"></i>Weekly Schedule
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered timetable-table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 110px;"><i class="bi bi-clock me-1"></i>Time</th>
+                            {% for day in days %}
+                            <th>{{ day }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ts in time_slots %}
+                        <tr>
+                            <td class="fw-semibold small text-nowrap">{{ ts }}</td>
+                            {% for day in days %}
+                            {% set schedule = schedule_grid[day][ts] %}
+                            <td class="schedule-cell {% if schedule and schedule.status == 'Engaged' %}status-engaged{% else %}status-free{% endif %}"
+                                {% if current_user.is_admin %}
+                                style="cursor: pointer;"
+                                onclick="window.location.href='{{ url_for('edit_schedule', teacher_id=teacher.id, day=day, time_slot=ts) }}'"
+                                {% endif %}>
+                                {% if schedule and schedule.status == 'Engaged' %}
+                                    {% if schedule.subject %}
+                                    <div class="subject-name">{{ schedule.subject }}</div>
+                                    {% else %}
+                                    <div class="subject-name">Engaged</div>
+                                    {% endif %}
+                                    {% if schedule.room_number %}
+                                    <div class="room-badge"><i class="bi bi-geo-alt"></i> {{ schedule.room_number }}</div>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-success"><i class="bi bi-check-circle"></i> Free</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="d-flex gap-4 mt-3 small text-muted no-print">
+        <span><span class="d-inline-block rounded" style="width: 14px; height: 14px; background: #e6f9f1; border-left: 3px solid #06d6a0; vertical-align: middle;"></span> Free</span>
+        <span><span class="d-inline-block rounded" style="width: 14px; height: 14px; background: #fde8ec; border-left: 3px solid #ef476f; vertical-align: middle;"></span> Engaged</span>
+    </div>
+</div>
+{% endblock %}

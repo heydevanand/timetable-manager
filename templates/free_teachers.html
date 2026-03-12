@@ -1,60 +1,136 @@
 {% extends 'base.html' %}
 
+{% block title %}Availability - Timetable Manager{% endblock %}
+
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <h4>Free Teachers</h4>
-    </div>
-    <div class="card-body">
-        <form method="get" action="{{ url_for('free_teachers') }}" class="mb-4 row">
-            <div class="col-md-4">
-                <label for="day" class="form-label">Day</label>
-                <select name="day" id="day" class="form-select">
-                    {% for day in days %}
-                    <option value="{{ day }}" {% if day == selected_day %}selected{% endif %}>{{ day }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label for="time_slot" class="form-label">Time Slot</label>
-                <select name="time_slot" id="time_slot" class="form-select">
-                    {% for slot in time_slots %}
-                    <option value="{{ slot }}" {% if slot == selected_time %}selected{% endif %}>{{ slot }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary">Find Free Teachers</button>
-            </div>
-        </form>
-        
-        <h5>Free Teachers on {{ selected_day }} at {{ selected_time }}</h5>
-        
-        {% if free_teachers %}
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for teacher in free_teachers %}
-                    <tr>
-                        <td>{{ teacher.name }}</td>
-                        <td>
-                            <a href="{{ url_for('edit_schedule') }}?teacher_id={{ teacher.id }}&day={{ selected_day }}&time_slot={{ selected_time }}" 
-                               class="btn btn-sm btn-primary">Update Schedule</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-person-check me-2"></i>Teacher Availability</h3>
+            <p class="text-muted mb-0">Find available and engaged teachers for any time slot</p>
         </div>
-        {% else %}
-        <div class="alert alert-info">No free teachers found for this time slot.</div>
-        {% endif %}
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card mb-4 no-print">
+        <div class="card-body py-3">
+            <form method="get" action="{{ url_for('free_teachers') }}">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="day" class="form-label fw-semibold"><i class="bi bi-calendar-day me-1"></i>Day</label>
+                        <select name="day" id="day" class="form-select">
+                            {% for day in days %}
+                            <option value="{{ day }}" {% if day == selected_day %}selected{% endif %}>{{ day }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="time_slot" class="form-label fw-semibold"><i class="bi bi-clock me-1"></i>Time Slot</label>
+                        <select name="time_slot" id="time_slot" class="form-select">
+                            {% for slot in time_slots %}
+                            <option value="{{ slot }}" {% if slot == selected_time %}selected{% endif %}>{{ slot }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search me-1"></i>Find Teachers
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="row g-4">
+        <!-- Free Teachers -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #06d6a0, #05b384); color: white; border: none;">
+                    <span><i class="bi bi-check-circle me-2"></i>Available Teachers</span>
+                    <span class="badge bg-white text-success">{{ free_teachers|length }}</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if free_teachers %}
+                    <div class="list-group list-group-flush">
+                        {% for teacher in free_teachers %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="teacher-avatar me-2" style="background: #06d6a0; width: 36px; height: 36px; font-size: 0.85rem; border-radius: 8px;">
+                                    {{ teacher.name[0]|upper }}
+                                </div>
+                                <div>
+                                    <div class="fw-semibold small">{{ teacher.name }}</div>
+                                    {% if teacher.department %}
+                                    <div class="text-muted" style="font-size: 0.75rem;">{{ teacher.department }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="d-flex gap-1">
+                                <a href="{{ url_for('teacher_timetable', id=teacher.id) }}" class="btn btn-sm btn-outline-primary" title="View Timetable">
+                                    <i class="bi bi-calendar3"></i>
+                                </a>
+                                {% if current_user.is_admin %}
+                                <a href="{{ url_for('edit_schedule', teacher_id=teacher.id, day=selected_day, time_slot=selected_time) }}"
+                                   class="btn btn-sm btn-outline-warning" title="Update Schedule">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state py-4">
+                        <i class="bi bi-emoji-frown" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0 small">No free teachers at this time</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Engaged Teachers -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #ef476f, #d63157); color: white; border: none;">
+                    <span><i class="bi bi-calendar-check me-2"></i>Engaged Teachers</span>
+                    <span class="badge bg-white text-danger">{{ engaged_teachers|length }}</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if engaged_teachers %}
+                    <div class="list-group list-group-flush">
+                        {% for teacher in engaged_teachers %}
+                        {% set schedule = teacher.schedules|selectattr('day', 'equalto', selected_day)|selectattr('time_slot', 'equalto', selected_time)|first %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="teacher-avatar me-2" style="background: #ef476f; width: 36px; height: 36px; font-size: 0.85rem; border-radius: 8px;">
+                                    {{ teacher.name[0]|upper }}
+                                </div>
+                                <div>
+                                    <div class="fw-semibold small">{{ teacher.name }}</div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">
+                                        {% if schedule and schedule.subject %}{{ schedule.subject }}{% endif %}
+                                        {% if schedule and schedule.room_number %} &middot; Room {{ schedule.room_number }}{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <a href="{{ url_for('teacher_timetable', id=teacher.id) }}" class="btn btn-sm btn-outline-primary" title="View Timetable">
+                                <i class="bi bi-calendar3"></i>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state py-4">
+                        <i class="bi bi-emoji-smile" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0 small">No engaged teachers at this time</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
