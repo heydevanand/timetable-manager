@@ -373,6 +373,7 @@ def dashboard():
         engaged = sum(1 for s in teacher.schedules if s.status == 'Engaged')
         pct = round((engaged / total * 100), 1) if total > 0 else 0
         teacher_stats.append({
+            'id': teacher.id,
             'name': teacher.name,
             'department': teacher.department or 'N/A',
             'total': total,
@@ -573,7 +574,7 @@ def export_timetable():
     return send_file(
         output,
         as_attachment=True,
-        download_name=f"timetable_{datetime.now().strftime('%Y%m%d')}.xlsx",
+        download_name=f"full_timetable_{datetime.now().strftime('%Y%m%d')}.xlsx",
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
 
@@ -921,17 +922,14 @@ def import_teachers():
                     skipped += 1
                     continue
 
-                dept = str(row.get('department', '')).strip() or None
-                email = str(row.get('email', '')).strip() or None
-                phone = str(row.get('phone', '')).strip() or None
+                dept = row.get('department')
+                email = row.get('email')
+                phone = row.get('phone')
 
-                # Clean up 'nan' values from pandas
-                if dept == 'nan':
-                    dept = None
-                if email == 'nan':
-                    email = None
-                if phone == 'nan':
-                    phone = None
+                # Use pandas-aware NaN check
+                dept = None if pd.isna(dept) else str(dept).strip() or None
+                email = None if pd.isna(email) else str(email).strip() or None
+                phone = None if pd.isna(phone) else str(phone).strip() or None
 
                 teacher = Teacher(name=name, department=dept, email=email, phone=phone)
                 db.session.add(teacher)

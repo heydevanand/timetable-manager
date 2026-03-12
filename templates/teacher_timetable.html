@@ -145,7 +145,7 @@
                             <td class="schedule-cell {% if schedule and schedule.status == 'Engaged' %}status-engaged{% else %}status-free{% endif %}"
                                 {% if current_user.is_admin %}
                                 style="cursor: pointer;"
-                                onclick="window.location.href='{{ url_for('edit_schedule', teacher_id=teacher.id, day=day, time_slot=ts) }}'"
+                                data-href="{{ url_for('edit_schedule', teacher_id=teacher.id, day=day, time_slot=ts) }}"
                                 {% endif %}>
                                 {% if schedule and schedule.status == 'Engaged' %}
                                     {% if schedule.subject %}
@@ -175,4 +175,16 @@
         <span><span class="d-inline-block rounded" style="width: 14px; height: 14px; background: #fde8ec; border-left: 3px solid #ef476f; vertical-align: middle;"></span> Engaged</span>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-href]').forEach(function(cell) {
+        cell.addEventListener('click', function() {
+            window.location.href = this.getAttribute('data-href');
+        });
+    });
+});
+</script>
 {% endblock %}
