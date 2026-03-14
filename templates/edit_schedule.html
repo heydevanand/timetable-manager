@@ -1,52 +1,92 @@
 {% extends 'base.html' %}
 
+{% block title %}Edit Schedule - Timetable Manager{% endblock %}
+
 {% block content %}
-<div class="row">
-    <div class="col-md-6 offset-md-3">
-        <div class="card">
-            <div class="card-header">
-                <h4>Edit Schedule</h4>
-            </div>
-            <div class="card-body">
-                <form action="{{ url_for('edit_schedule') }}" method="post">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <input type="hidden" name="teacher_id" value="{{ schedule.teacher_id }}">
-                    <input type="hidden" name="day" value="{{ schedule.day }}">
-                    <input type="hidden" name="time_slot" value="{{ schedule.time_slot }}">
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Teacher</label>
-                        <p class="form-control-static">{{ schedule.teacher.name }}</p>
+<div class="fade-in">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('timetable') }}">Timetable</a></li>
+            <li class="breadcrumb-item active">Edit Schedule</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card">
+                <div class="card-header gradient-header">
+                    <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Edit Schedule</h5>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Info Row -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-4">
+                            <div class="p-3 bg-light rounded-3 text-center">
+                                <div class="small text-muted">Teacher</div>
+                                <div class="fw-bold">{{ schedule.teacher.name }}</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-3 bg-light rounded-3 text-center">
+                                <div class="small text-muted">Day</div>
+                                <div class="fw-bold">{{ schedule.day }}</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-3 bg-light rounded-3 text-center">
+                                <div class="small text-muted">Time</div>
+                                <div class="fw-bold">{{ schedule.time_slot }}</div>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Day</label>
-                        <p class="form-control-static">{{ schedule.day }}</p>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Time Slot</label>
-                        <p class="form-control-static">{{ schedule.time_slot }}</p>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="status" class="form-label">Status</label>
-                        <select class="form-select" id="status" name="status">
-                            <option value="Free" {% if schedule.status == 'Free' %}selected{% endif %}>Free</option>
-                            <option value="Engaged" {% if schedule.status == 'Engaged' %}selected{% endif %}>Engaged</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="room_number" class="form-label">Room Number</label>
-                        <input type="text" class="form-control" id="room_number" name="room_number" value="{{ schedule.room_number }}">
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                    <a href="{{ url_for('timetable') }}" class="btn btn-secondary">Cancel</a>
-                </form>
+
+                    <form action="{{ url_for('edit_schedule') }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="teacher_id" value="{{ schedule.teacher_id }}">
+                        <input type="hidden" name="day" value="{{ schedule.day }}">
+                        <input type="hidden" name="time_slot" value="{{ schedule.time_slot }}">
+
+                        <div class="mb-3">
+                            <label for="status" class="form-label fw-semibold">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="Free" {% if schedule.status == 'Free' %}selected{% endif %}>Free</option>
+                                <option value="Engaged" {% if schedule.status == 'Engaged' %}selected{% endif %}>Engaged</option>
+                            </select>
+                        </div>
+
+                        <div id="engagedFields" {% if schedule.status != 'Engaged' %}style="display:none"{% endif %}>
+                            <div class="mb-3">
+                                <label for="subject" class="form-label fw-semibold">Subject / Course</label>
+                                <input type="text" class="form-control" id="subject" name="subject" value="{{ schedule.subject or '' }}" placeholder="e.g., Data Structures">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="room_number" class="form-label fw-semibold">Room Number</label>
+                                <input type="text" class="form-control" id="room_number" name="room_number" value="{{ schedule.room_number or '' }}" placeholder="e.g., 201">
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('timetable') }}" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Cancel</a>
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save Changes</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var statusSelect = document.getElementById('status');
+    var engagedFields = document.getElementById('engagedFields');
+
+    statusSelect.addEventListener('change', function() {
+        engagedFields.style.display = this.value === 'Engaged' ? 'block' : 'none';
+    });
+});
+</script>
 {% endblock %}

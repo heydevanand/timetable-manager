@@ -51,3 +51,6 @@ instance/
 logs/
 *.log
 .vercel
+secret_key
+flask_session/
+.pytest_cache/

@@ -1,113 +1,153 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Change how we access the CSRF token -->
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>{% block title %}Flask Timetable{% endblock %}</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>{% block title %}Timetable Manager{% endblock %}</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block styles %}{% endblock %}
-    <style>
-        .table-responsive {
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        .status-engaged {
-            background-color: #ffcccb;
-        }
-        .status-free {
-            background-color: #c8e6c9;
-        }
-        .schedule-cell {
-            cursor: pointer;
-        }
-    </style>
 </head>
 <body>
-    <!-- Remove any inline styles that might add padding -->
-    <!-- If you have a fixed navbar, ensure it's not adding extra space -->
-    
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">Timetable App</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
+                <i class="bi bi-calendar3 me-2 fs-4"></i>
+                <span class="fw-bold">Timetable Manager</span>
+            </a>
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
+                {% if current_user.is_authenticated %}
                 <ul class="navbar-nav me-auto">
-                    {% if current_user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+                        <a class="nav-link" href="{{ url_for('dashboard') }}">
+                            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('timetable') }}">Timetable</a>
+                        <a class="nav-link" href="{{ url_for('index') }}">
+                            <i class="bi bi-people me-1"></i>Teachers
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('free_teachers') }}">Free Teachers</a>
+                        <a class="nav-link" href="{{ url_for('timetable') }}">
+                            <i class="bi bi-table me-1"></i>Timetable
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('free_teachers') }}">
+                            <i class="bi bi-person-check me-1"></i>Availability
+                        </a>
                     </li>
                     {% if current_user.is_admin %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('manage_users') }}">Manage Users</a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-gear me-1"></i>Admin
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li><a class="dropdown-item" href="{{ url_for('manage_users') }}"><i class="bi bi-people-fill me-2"></i>Manage Users</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('add_teacher') }}"><i class="bi bi-person-plus me-2"></i>Add Teacher</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('import_teachers') }}"><i class="bi bi-upload me-2"></i>Import Teachers</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('export_timetable') }}"><i class="bi bi-file-earmark-excel me-2"></i>Export Timetable</a></li>
+                        </ul>
                     </li>
-                    {% endif %}
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav">
-                    {% if current_user.is_authenticated %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                            <div class="avatar-circle me-2">
+                                {{ current_user.username[0]|upper }}
+                            </div>
+                            <span>{{ current_user.username }}</span>
+                            {% if current_user.is_admin %}
+                            <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">Admin</span>
+                            {% endif %}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
+                            <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="bi bi-person me-2"></i>Profile</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <span class="nav-link text-light">Welcome, {{ current_user.username }}</span>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link btn btn-outline-danger btn-sm" href="{{ url_for('logout') }}">Logout</a>
-                    </li>
-                    {% else %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('register') }}">Register</a>
-                    </li>
-                    {% endif %}
                 </ul>
+                {% else %}
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}"><i class="bi bi-box-arrow-in-right me-1"></i>Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('register') }}"><i class="bi bi-person-plus me-1"></i>Register</a>
+                    </li>
+                </ul>
+                {% endif %}
             </div>
         </div>
     </nav>
 
-    <!-- Make sure your content container doesn't have unnecessary padding-top -->
-    <div class="content-wrapper">
+    <main class="container-fluid px-4 py-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+                {% if category == 'success' %}<i class="bi bi-check-circle me-2"></i>
+                {% elif category == 'danger' %}<i class="bi bi-exclamation-triangle me-2"></i>
+                {% elif category == 'warning' %}<i class="bi bi-exclamation-circle me-2"></i>
+                {% elif category == 'info' %}<i class="bi bi-info-circle me-2"></i>
+                {% endif %}
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             {% endfor %}
         {% endif %}
         {% endwith %}
-        
-        {% block content %}{% endblock %}
-    </div>
 
-    <!-- Bootstrap JS Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer mt-auto py-3 text-center text-muted">
+        <div class="container">
+            <span class="small"><i class="bi bi-calendar3 me-1"></i>Timetable Manager &copy; 2024</span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Set up CSRF token for AJAX requests
         document.addEventListener("DOMContentLoaded", function() {
-            // Get the CSRF token from meta tag
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            
-            // Configure XMLHttpRequest to include CSRF token
-            const originalOpen = XMLHttpRequest.prototype.open;
-            XMLHttpRequest.prototype.open = function() {
-                originalOpen.apply(this, arguments);
-                this.setRequestHeader('X-CSRFToken', csrfToken);
-            };
+            // CSRF token for AJAX requests
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (csrfToken) {
+                const token = csrfToken.getAttribute('content');
+                const originalOpen = XMLHttpRequest.prototype.open;
+                XMLHttpRequest.prototype.open = function() {
+                    originalOpen.apply(this, arguments);
+                    this.setRequestHeader('X-CSRFToken', token);
+                };
+            }
+
+            // Auto-dismiss alerts after 5 seconds
+            document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+                setTimeout(function() {
+                    const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+
+            // Active nav link highlighting
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.navbar-nav .nav-link').forEach(function(link) {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
         });
     </script>
     {% block scripts %}{% endblock %}
